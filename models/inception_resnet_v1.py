@@ -211,6 +211,11 @@ class InceptionResnetV1(nn.Module):
             tmp_classes = 8631
         elif pretrained == 'casia-webface':
             tmp_classes = 10575
+        elif pretrained == 'vgg_gender':
+            tmp_classes = 8631
+        elif pretrained == 'vgg_race':
+            tmp_classes = 8631
+
         elif pretrained is None and self.classify and self.num_classes is None:
             raise Exception('If "pretrained" is not specified and "classify" is True, "num_classes" must be specified')
 
@@ -258,11 +263,18 @@ class InceptionResnetV1(nn.Module):
         self.last_bn = nn.BatchNorm1d(512, eps=0.001, momentum=0.1, affine=True)
 
         if pretrained is not None:
-            self.logits = nn.Linear(512, tmp_classes)
-            load_weights(self, pretrained)
+            if pretrained == 'vggface2' or pretrained == 'casia-webface':
+                self.logits = nn.Linear(512, tmp_classes)
+                load_weights(self, pretrained)
+            elif pretrained == 'vgg_gender' or pretrained == 'vgg_race':
+                self.logits = nn.Linear(512, tmp_classes)
 
         if self.classify and self.num_classes is not None:
-            self.logits = nn.Linear(512, self.num_classes)
+            if pretrained == 'vggface2' or pretrained == 'casia-webface':
+                self.logits = nn.Linear(512, self.num_classes)
+            elif pretrained == 'vgg_gender' or pretrained == 'vgg_race':
+                self.logits = nn.Linear(512, self.num_classes)
+                load_weights(self, pretrained)
 
         self.device = torch.device('cpu')
         if device is not None:
@@ -316,18 +328,29 @@ def load_weights(mdl, name):
         path = 'https://github.com/timesler/facenet-pytorch/releases/download/v2.2.9/20180402-114759-vggface2.pt'
     elif name == 'casia-webface':
         path = 'https://github.com/timesler/facenet-pytorch/releases/download/v2.2.9/20180408-102900-casia-webface.pt'
+    elif name == 'vgg_gender':
+        path = '/home/ubuntu/utkface/vgg_gender.pt'
+    elif name == 'vgg_race':
+        path = '/home/ubuntu/utkface/vgg_race.pt'
+
     else:
         raise ValueError('Pretrained models only exist for "vggface2" and "casia-webface"')
 
-    model_dir = os.path.join(get_torch_home(), 'checkpoints')
-    os.makedirs(model_dir, exist_ok=True)
+    if name == 'vggface2' or name == 'casia-webface':
+        model_dir = os.path.join(get_torch_home(), 'checkpoints')
+        os.makedirs(model_dir, exist_ok=True)
 
-    cached_file = os.path.join(model_dir, os.path.basename(path))
-    if not os.path.exists(cached_file):
-        download_url_to_file(path, cached_file)
+        cached_file = os.path.join(model_dir, os.path.basename(path))
+        if not os.path.exists(cached_file):
+            download_url_to_file(path, cached_file)
 
-    state_dict = torch.load(cached_file)
-    mdl.load_state_dict(state_dict)
+        state_dict = torch.load(cached_file)
+        mdl.load_state_dict(state_dict)
+
+    elif name == 'vgg_gender' or name == 'vgg_race':
+        state_dict = torch.load(path)
+        mdl.load_state_dict(state_dict)
+
 
 
 def get_torch_home():
